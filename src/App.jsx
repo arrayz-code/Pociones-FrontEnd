@@ -1,332 +1,158 @@
-import React from "react";
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import './index.css'
 
-import "./App.css";
-import "bootstrap/dist/css/bootstrap.min.css";
-import {
-  Table,
-  Button,
-  Container,
-  Modal,
-  ModalHeader,
-  ModalBody,
-  FormGroup,
-  ModalFooter,
-} from "reactstrap";
+function App() {
+  const [potions, setPotions] = useState([]);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    price: '',
+    quantity: '',
+    category: '',
+    ingredients: [],
+  });
+  const [editMode, setEditMode] = useState(false);
+  const [editId, setEditId] = useState(null);
 
-const data = [
-  { id: 1, nombre: "Aliento de Fuego", descripcion: "Amor", precio: "10", disponible: "2" },
-  { id: 2, nombre: "Alihotsy", descripcion: "Daño", precio: "20", disponible: "2" },
-  { id: 3, nombre: "Antiparalisis", descripcion: "Curación", precio: "15", disponible: "2" },
-  { id: 4, nombre: "Arpias", descripcion: "Daño", precio: "30", disponible: "2" },
-  { id: 5, nombre: "Venenosa", descripcion: "Daño", precio: "60", disponible: "2" },
-  { id: 6, nombre: "Antidoto", descripcion: "Curación", precio: "5", disponible: "2" },
-];
+  useEffect(() => {
+    fetchPotions();
+  }, []);
 
-class App extends React.Component {
-  state = {
-    data: data,
-    modalActualizar: false,
-    modalInsertar: false,
-    form: {
-      id: "",
-      nombre: "",
-      descripcion: "",
-      precio: "",
-      disponible: "",
- 
-    },
+  const fetchPotions = async () => {
+    const response = await axios.get('http://localhost:4000/potions');
+    setPotions(response.data);
   };
 
-  mostrarModalActualizar = (dato) => {
-    this.setState({
-      form: dato,
-      modalActualizar: true,
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (editMode) {
+      // Enviar la solicitud PUT al backend para actualizar la poción
+      await axios.put(`http://localhost:4000/potions/${editId}`, formData);
+    } else {
+      // Enviar la solicitud POST al backend para crear una nueva poción
+      await axios.post('http://localhost:4000/potions', formData);
+    }
+
+    // Limpiar el formulario y actualizar la lista de pociones
+    setFormData({
+      name: '',
+      description: '',
+      price: '',
+      quantity: '',
+      category: '',
+      ingredients: [],
     });
+    setEditMode(false);
+    setEditId(null);
+    fetchPotions();
   };
 
-  cerrarModalActualizar = () => {
-    this.setState({ modalActualizar: false });
-  };
+  const handleEdit = (id) => {
+    // Buscar la poción seleccionada por su ID
+    const potionToEdit = potions.find((potion) => potion.id === id);
 
-  mostrarModalInsertar = () => {
-    this.setState({
-      modalInsertar: true,
+    // Actualizar el estado del formulario con los datos de la poción seleccionada
+    setFormData({
+      name: potionToEdit.name,
+      description: potionToEdit.description,
+      price: potionToEdit.price,
+      quantity: potionToEdit.quantity,
+      category: potionToEdit.category,
+      ingredients: potionToEdit.ingredients,
     });
+
+    setEditMode(true);
+    setEditId(id);
   };
 
-  cerrarModalInsertar = () => {
-    this.setState({ modalInsertar: false });
-  };
-
-  editar = (dato) => {
-    var contador = 0;
-    var arreglo = this.state.data;
-    arreglo.map((registro) => {
-      if (dato.id == registro.id) {
-        arreglo[contador].nombre = dato.nombre;
-        arreglo[contador].descripcion = dato.descripcion;
-        arreglo[contador].precio = dato.precio;
-        arreglo[contador].disponible = dato.disponible;
- 
-      }
-      contador++;
-    });
-    this.setState({ data: arreglo, modalActualizar: false });
-  };
-
-  eliminar = (dato) => {
-    var opcion = window.confirm(" ¿Estás Seguro que deseas Eliminar la Poción " + dato.nombre + "?");
-    if (opcion == true) {
-      var contador = 0;
-      var arreglo = this.state.data;
-      arreglo.map((registro) => {
-        if (dato.id == registro.id) {
-          arreglo.splice(contador, 1);
-        }
-        contador++;
-      });
-      this.setState({ data: arreglo, modalActualizar: false });
+  const handleDelete = async (id) => {
+    if (window.confirm('¿Estás seguro de eliminar esta poción?')) {
+      await axios.delete(`http://localhost:4000/potions/${id}`);
+      fetchPotions();
     }
   };
 
-  insertar = () => {
-    var valorNuevo = { ...this.state.form };
-    valorNuevo.id = this.state.data.length + 1;
-    var lista = this.state.data;
-    lista.push(valorNuevo);
-    this.setState({ modalInsertar: false, data: lista });
-  }
-
-  handleChange = (e) => {
-    this.setState({
-      form: {
-        ...this.state.form,
-        [e.target.name]: e.target.value,
-      },
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
     });
   };
 
-  render() {
+  return (
+    <div className='container'> 
+      <h2>Página de Pociones</h2>
+      <ul>
+        {potions.map((potion) => (
+          <li key={potion.id}>
+            <h3>{potion.name}</h3>
+            <p>Descripción: {potion.description}</p>
+            <p>Precio: {potion.price}</p>
+            <p>Cantidad disponible: {potion.quantity}</p>
+            <p>Categoría: {potion.category}</p>
+            <button onClick={() => handleEdit(potion.id)}>Editar</button>
+            <button onClick={() => handleDelete(potion.id)}>Eliminar</button>
+          </li>
+        ))}
+      </ul>
 
-    return (
-      <>
-        <Container>
-          <br />
-          <Button color="success" onClick={() => this.mostrarModalInsertar()}>Crear Poción</Button>
-          <br />
-          <br />
-          <Table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Descripcion</th>
-                <th>Precio</th>
-                <th>Disponible</th>
-                <th>Acción</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {this.state.data.map((dato) => (
-                <tr key={dato.id}>
-                  <td>{dato.id}</td>
-                  <td>{dato.nombre}</td>
-                  <td>{dato.descripcion}</td>
-                  <td>{dato.precio}$</td>
-                  <td>{dato.disponible}</td>
-
-                  <td>
-                    <Button
-                      color="primary"
-                      onClick={() => this.mostrarModalActualizar(dato)}
-                    >
-                      Editar
-                    </Button>{" "}
-                    <Button color="danger" onClick={() => this.eliminar(dato)}>Eliminar</Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </Container>
-
-        <Modal isOpen={this.state.modalActualizar}>
-          <ModalHeader>
-            <div><h3>Editar Poción</h3></div>
-          </ModalHeader>
-
-          <ModalBody>
-            <FormGroup>
-              <label>
-                Id:
-              </label>
-
-              <input
-                className="form-control"
-                readOnly
-                type="text"
-                value={this.state.form.id}
-              />
-            </FormGroup>
-
-            <FormGroup>
-              <label>
-                nombre:
-              </label>
-              <input
-                className="form-control"
-                name="nombre"
-                type="text"
-                onChange={this.handleChange}
-                value={this.state.form.nombre}
-              />
-            </FormGroup>
-
-            <FormGroup>
-              <label>
-                descripcion:
-              </label>
-              <input
-                className="form-control"
-                name="descripcion"
-                type="text"
-                onChange={this.handleChange}
-                value={this.state.form.descripcion}
-              />
-            </FormGroup>
-
-            <FormGroup>
-              <label>
-                precio:
-              </label>
-              <input
-                className="form-control"
-                name="precio"
-                type="number"
-                onChange={this.handleChange}
-                value={this.state.form.precio}
-              />
-            </FormGroup>
-
-            <FormGroup>
-              <label>
-                disponible:
-              </label>
-              <input
-                className="form-control"
-                name="disponible"
-                type="number"
-                onChange={this.handleChange}
-                value={this.state.form.disponible}
-              />
-            </FormGroup>
-          </ModalBody>
-
-          <ModalFooter>
-            <Button
-              color="primary"
-              onClick={() => this.editar(this.state.form)}
-            >
-              Editar
-            </Button>
-            <Button
-              color="danger"
-              onClick={() => this.cerrarModalActualizar()}
-            >
-              Cancelar
-            </Button>
-          </ModalFooter>
-        </Modal>
-
-
-
-        <Modal isOpen={this.state.modalInsertar}>
-          <ModalHeader>
-            <div><h3>Ingresar Poción</h3></div>
-          </ModalHeader>
-
-          <ModalBody>
-            <FormGroup>
-              <label>
-                Id:
-              </label>
-
-              <input
-                className="form-control"
-                readOnly
-                type="text"
-                value={this.state.data.length + 1}
-              />
-            </FormGroup>
-
-            <FormGroup>
-              <label>
-                nombre:
-              </label>
-              <input
-                className="form-control"
-                name="nombre"
-                type="text"
-                onChange={this.handleChange}
-              />
-            </FormGroup>
-
-            <FormGroup>
-              <label>
-                descripcion:
-              </label>
-              <input
-                className="form-control"
-                name="descripcion"
-                type="text"
-                onChange={this.handleChange}
-              />
-            </FormGroup>
-
-            <FormGroup>
-              <label>
-                precio:
-              </label>
-              <input
-                className="form-control"
-                name="precio"
-                type="text"
-                onChange={this.handleChange}
-              />
-            </FormGroup>
-
-            <FormGroup>
-              <label>
-                disponible:
-              </label>
-              <input
-                className="form-control"
-                name="disponible"
-                type="text"
-                onChange={this.handleChange}
-              />
-            </FormGroup>
-
-          </ModalBody>
-
-          <ModalFooter>
-            <Button
-              color="primary"
-              onClick={() => this.insertar()}
-            >
-              Insertar
-            </Button>
-            <Button
-              className="btn btn-danger"
-              onClick={() => this.cerrarModalInsertar()}
-            >
-              Cancelar
-            </Button>
-          </ModalFooter>
-        </Modal>
-      </>
-    );
-  }
+      <h3>{editMode ? 'Editar Poción' : 'Crear Poción'}</h3>
+      <form onSubmit={handleSubmit}>
+        <label>
+          Nombre:
+          <input
+            type="text"
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+          />
+        </label>
+        <br />
+        <label>
+          Descripción:
+          <input
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+          />
+        </label>
+        <br />
+        <label>
+          Precio:
+          <input
+            type="number"
+            name="price"
+            value={formData.price}
+            onChange={handleChange}
+          />
+        </label>
+        <br />
+        <label>
+          Cantidad:
+          <input
+            type="number"
+            name="quantity"
+            value={formData.quantity}
+            onChange={handleChange}
+          />
+        </label>
+        <br />
+        <label>
+          Categoría:
+          <input
+            type="text"
+            name="category"
+            value={formData.category}
+            onChange={handleChange}
+          />
+        </label>
+      
+        <button type="submit">{editMode ? 'Actualizar' : 'Crear'}</button>
+      </form>
+    </div>
+  );
 }
+
 export default App;
